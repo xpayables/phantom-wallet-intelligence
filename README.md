@@ -11,7 +11,7 @@ Rank a crypto wallet's existing users for **card/CASH cross-sell and retention**
 **Takeaway:** a **retention** model and a **value** model combine into a priority score that beats a naive past-volume sort on the consumer base (**significant at the top quintile**; the top-decile lift is larger but window-dependent), projecting to a tunable **~$0.3M/yr** case. Each model carries its own metric: retention AUC 0.80, priority-score lift, value R², segmentation silhouette. Full results below, *after* the methodology.
 
 ## Purpose · audience
-- **Why:** a wallet's highest-margin revenue is card interchange (~100-130 bps/swipe) and **CASH float (~3-4%/yr net on idle balances)**: but growth attention is finite, so the question is *which existing users to target*.
+- **Why:** a wallet's highest-margin revenue is card interchange (~100-130 bps/swipe) and **CASH float (~3-4%/yr net on idle balances)**, but growth attention is finite, so the question is *which existing users to target*.
 - **Purpose:** 
 	- Score each existing user by predicted **retention** (stay or not) × **value** (predicted future swap volume),
 	- assign a segment + a product-led action, and 
@@ -23,14 +23,14 @@ Rank a crypto wallet's existing users for **card/CASH cross-sell and retention**
 - **Unit:** one wallet.
 - **Cutoff `T`** (features dated before T, outcomes measured from T): rolls to the **first of each month**; the current snapshot uses `T` = 2026-04-01.
 - **Feature window** = the 6 months before T (**Oct 1 2025 to Mar 31 2026**).
-- **Label window** = the 3 months from T (**Apr 1 to Jun 30 2026**): where we observe churn, value.
+- **Label window** = the 3 months from T (**Apr 1 to Jun 30 2026**): where we observe churn and value.
 
 ## Methodology
 
 ### Population
 - Phantom users identified via Phantom's 8 Solana swap-fee wallets (address list from DefiLlama `fees/phantom.ts`). Fee-attribution is the only public way to find Phantom's *own* customers, and cross-sell needs them.
 - Roster size cross-checked against Blockworks' published active-wallet count (~34k daily): [Phantom Total Active Wallets](https://blockworks.com/analytics/phantom/phantom-overview/phantom-total-active-wallets).
-- **Scope, disclosed:** fee-paying *Solana swappers*, a subset of all Phantom users (misses passive holders, NFT/staking/perps-only, and EVM users).
+- **Scope, disclosed:** fee-paying *Solana swappers*, a subset of all Phantom users.
 
 ### Sampling
 Keep **~1 in 60 wallets** by a hash of the address (`abs(from_big_endian_64(xxhash64(wallet))) % 60 = 0`): deterministic (same wallets every run), applied to both queries so they join, and selecting on the address alone, so the sample mirrors the population. At n ≈ 32k, any population proportion we report is accurate to ±0.7% (95% CI).
@@ -55,7 +55,7 @@ Three models: **two predict, one describes**. Multiplying the two predictors giv
 - **Point-in-time**: features dated ≤ T, outcomes measured after T; the model is trained the way it runs live.
 - **Cohort**: wallets active in the feature window (bots filtered out). Models train on all of them; the top-0.1% volume outliers (one ≈ 54% of future volume, likely desks / market-makers / rebalancing) are flagged and split out only when we *report* the lift and assign actions, so the consumer-growth results describe ordinary users.
 - **Test set**: every metric is scored on a 30% held-out test set (wallets unseen in training); 5-fold CV confirms consistency.
-- **Significance**: effects carry bootstrap 95% CIs; population proportions, ±0.7% margin of error (see Sampling).
+- **Significance**: effects carry bootstrap 95% CIs; population proportions carry a ±0.7% margin of error (see Sampling).
 
 ### Model 1. Retention (gradient-boosting classifier)
 - **Predicts:** `P(active)` (0 to 1): "will they stay?"
@@ -69,7 +69,7 @@ Three models: **two predict, one describes**. Multiplying the two predictors giv
 - **Measured by:** **R²** in log *and* dollar space (dollar space keeps the heavy tail honest).
 - **Result:** the model **orders wallets by value well** (log-R² 0.38) but can't predict the exact **dollar amount** (dollar-R² ≈ 0). The split: a typical wallet's prediction is only ~$52 off, while a few whales' huge volumes are unpredictable and dominate the dollar-scale error. So use it as a **rank**, not a forecast; its payoff is the priority-score lift below.
 
-### Priority score = model 1 × model 2  *(the ranking used for targeting)*
+### Priority score = model 1 × model 2
 - **Measured by:** **value-capture lift** vs. the naive baseline (sort by *past* volume, take the top X%): the *extra* future volume captured.
 - **Result:** on the consumer base the model beats a past-volume sort at every top-X% cut. The **top quintile is significant** (bootstrap CI above 0); the **top decile is larger (~+5 to 7%) but window-dependent**, with a CI that can span 0, so treat the quintile as the robust claim. On the *full* population the lift shrinks to ~+1%: value is so concentrated (one wallet ≈ 54%) that any sort already captures the outlier, so the consumer-base number reflects skill.
 
@@ -119,7 +119,7 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 export DUNE_API_KEY=...            # only needed to re-extract; the demo runs off the committed snapshot
 python features.py                 # build features + labels (DQ-asserted)
 python model.py                    # two-stage models + honest eval -> `scored`
-python export_demo.py              # scored+features -> snapshot/demo.duckdb (small, committed)
+python export_demo.py              # scored+features -> snapshot/*.parquet (small, committed)
 python value.py                    # projected-value report
 streamlit run app.py               # dashboard (reads the committed snapshot)
 ```
@@ -133,11 +133,11 @@ Windows roll forward monthly, with `T` anchored to the first of the month (so fe
 - `features.py`: per-wallet features + churn/value labels (+ DQ assertions) → `features`.
 - `model.py`: two-stage churn + value models, honest eval (baseline lift, bootstrap CIs, calibration, importances), segments → `scored`.
 - `valuation.py` / `value.py`: economic assumptions + projected-value report.
-- `export_demo.py`: copies `scored`+`features` into `snapshot/demo.duckdb` for deploy.
+- `export_demo.py`: copies `scored`+`features` into `snapshot/*.parquet` for deploy (version-independent).
 - `app.py`: Streamlit dashboard.
 - `.github/workflows/refresh.yml`: monthly cron that rebuilds and commits the snapshot (auto-redeploys the app).
 - `sql/`: Dune queries (`transfers_chunk.sql`, `balances_at_t.sql`).
-- `data/`: full pipeline DB (gitignored). `snapshot/`: committed demo DB the app reads.
+- `data/`: full pipeline DB (gitignored). `snapshot/`: committed Parquet the app reads.
 
 ## Sources
 - Card economics (interchange ~100-130 bps; CASH float ~3.5%/yr net). CASH issued via [Bridge Open Issuance (Stripe)](https://stripe.com/blog/introducing-open-issuance-from-bridge); net float ≈ 3-mo T-bill yield (~3.7%, Jul 2026) less Bridge's issuance fee.
