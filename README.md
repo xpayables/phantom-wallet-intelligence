@@ -4,6 +4,8 @@ Rank a crypto wallet's existing users for **card/CASH cross-sell and retention**
 
 **🔗 Live demo:** **[phantom-wallet-intelligence.streamlit.app](https://phantom-wallet-intelligence.streamlit.app)**. An interactive dashboard, no install needed. To rebuild from scratch, see [Reproduce locally](#reproduce-locally-dev).
 
+[![Phantom Wallet Intelligence dashboard](assets/dashboard.png)](https://phantom-wallet-intelligence.streamlit.app)
+
 **Takeaway:** a **retention** model and a **value** model combine into a priority score that beats a naive past-volume sort by a statistically significant **+7%** on the consumer base, projecting to a tunable **~$330k/yr** case. Each model carries its own metric: retention AUC 0.80, priority-score lift +7%, value R², segmentation silhouette. Full results below, *after* the methodology.
 
 ## Purpose · audience
