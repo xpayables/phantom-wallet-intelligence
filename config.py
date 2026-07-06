@@ -1,5 +1,11 @@
-"""Pipeline configuration. Secrets come from the environment."""
+"""Pipeline configuration. Secrets come from the environment.
+
+Windows roll monthly. T is set LABEL_MONTHS back from the first of the current month, so its label
+window is fully observed by run time; the feature window is the FEATURE_MONTHS before T. Pin a run with
+PIPELINE_ASOF=YYYY-MM-DD for a reproducible local rebuild.
+"""
 import os
+from datetime import date, datetime, timezone
 
 DUNE_API_KEY = os.environ.get("DUNE_API_KEY")   # .get() so non-extract scripts import without the key set
 DB_PATH = "data/phantom.duckdb"
@@ -8,11 +14,25 @@ DB_PATH = "data/phantom.duckdb"
 TRANSFERS_QUERY_ID = 7887859
 BALANCES_QUERY_ID = 7887855
 
-# Extraction window; chunked to stay under the Small-engine 2-minute limit.
-WINDOW_START = "2025-10-01 00:00:00"
-WINDOW_END = "2026-07-01 00:00:00"
-CHUNK_DAYS = 3
+CHUNK_DAYS = 3            # extraction chunk width (keeps each Small-engine query under the ~2-min limit)
+PULL_BALANCES = True      # gate the one-day balance snapshot
+FEATURE_MONTHS = 6        # feature-window length
+LABEL_MONTHS = 3          # label-window length; also how far T lags "now" so labels are observed
 
-CUTOFF_T = "2026-03-31"              # date-only (UTC); features < T, labels >= T
-BALANCE_DAY = "2026-03-31 00:00:00"
-PULL_BALANCES = True                 # gate the one-day balance snapshot (large fetch - off by default in dev)
+
+def _add_months(d, months):
+    total = d.year * 12 + (d.month - 1) + months
+    y, m = divmod(total, 12)
+    return date(y, m + 1, 1)
+
+
+_asof = (date.fromisoformat(os.environ["PIPELINE_ASOF"]) if os.environ.get("PIPELINE_ASOF")
+         else datetime.now(timezone.utc).date())
+_end = date(_asof.year, _asof.month, 1)          # first of the current month; labels observed before this
+_cutoff = _add_months(_end, -LABEL_MONTHS)
+_start = _add_months(_cutoff, -FEATURE_MONTHS)
+
+WINDOW_START = _start.strftime("%Y-%m-%d 00:00:00")
+WINDOW_END = _end.strftime("%Y-%m-%d 00:00:00")
+CUTOFF_T = _cutoff.strftime("%Y-%m-%d")          # date-only (UTC); features < T, labels >= T
+BALANCE_DAY = _cutoff.strftime("%Y-%m-%d 00:00:00")

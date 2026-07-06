@@ -6,6 +6,8 @@ Rank a crypto wallet's existing users for **card/CASH cross-sell and retention**
 
 [![Phantom Wallet Intelligence dashboard](assets/dashboard.png)](https://phantom-wallet-intelligence.streamlit.app)
 
+*Figures, windows, and the screenshot in this README are from a reference run (cutoff `T` = 2026-03-31). The live dashboard reflects the latest monthly snapshot, so its numbers will differ.*
+
 **Takeaway:** a **retention** model and a **value** model combine into a priority score that beats a naive past-volume sort by a statistically significant **+7%** on the consumer base, projecting to a tunable **~$330k/yr** case. Each model carries its own metric: retention AUC 0.80, priority-score lift +7%, value R², segmentation silhouette. Full results below, *after* the methodology.
 
 ## Purpose · audience
@@ -116,6 +118,8 @@ streamlit run app.py               # dashboard (reads the committed snapshot)
 ```
 Extraction: `python extract.py` (credit-safe: hash-sampled, chunked, resumable). **After re-running the pipeline, restart Streamlit** (or ⋮ → Clear cache) so it loads the fresh snapshot; `@st.cache_data` keeps the previous load in memory.
 
+Windows roll forward from the run date; set `PIPELINE_ASOF=YYYY-MM-DD` to pin them for a reproducible rebuild. In production, a monthly GitHub Action (`.github/workflows/refresh.yml`) reruns this pipeline and commits the new snapshot, which redeploys the app.
+
 ## Repo structure
 - `config.py`: window, cutoff `T`, query ids, sample settings.
 - `extract.py`: chunked Dune API → DuckDB (`activity`, `balances_at_t`); credit-safe + resumable.
@@ -124,6 +128,7 @@ Extraction: `python extract.py` (credit-safe: hash-sampled, chunked, resumable).
 - `valuation.py` / `value.py`: economic assumptions + projected-value report.
 - `export_demo.py`: copies `scored`+`features` into `snapshot/demo.duckdb` for deploy.
 - `app.py`: Streamlit dashboard.
+- `.github/workflows/refresh.yml`: monthly cron that rebuilds and commits the snapshot (auto-redeploys the app).
 - `sql/`: Dune queries (`transfers_chunk.sql`, `balances_at_t.sql`).
 - `data/`: full pipeline DB (gitignored). `snapshot/`: committed demo DB the app reads.
 
