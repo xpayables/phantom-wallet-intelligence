@@ -42,6 +42,9 @@ st.markdown("""
   [data-testid="stMetricValue"] { font-size:1.4rem !important; font-weight:700 !important; color:#6E56CF !important; }
   /* slider thumb: darker purple than the (lighter) filled track */
   [data-testid="stSlider"] [role="slider"] { background-color:#4c3b9c !important; }
+  /* unify the small meta labels (Cutoff T, 1/60 sample, etc.) to one size + color */
+  [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p {
+      font-size:0.8rem !important; color:#6b7280 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -62,7 +65,7 @@ df = load()
 
 # ---- sidebar: title + filters ----
 st.sidebar.markdown(
-    "<div style='font-size:1.8rem;font-weight:800;line-height:1.05;margin:0 0 .3rem;color:#4a4a4a;'>"
+    "<div style='font-size:1.8rem;font-weight:800;line-height:1.05;margin:0 0 .65rem;color:#4a4a4a;'>"
     "Phantom<br>Wallet<br>Intelligence</div>", unsafe_allow_html=True)
 st.sidebar.markdown(
     f'<a href="{REPO_URL}" target="_blank" style="text-decoration:none;font-weight:500;color:#6E56CF;">'
@@ -71,7 +74,7 @@ st.sidebar.markdown(
 st.sidebar.caption(f"Cutoff T = {config.CUTOFF_T}",
     help="T is the analysis cutoff: features use activity before T; retention and value are measured in the 3 months after.")
 st.sidebar.markdown(
-    f"<div style='font-size:0.72rem;color:#8a8d9b;'>Next monthly refresh: {NEXT_REFRESH}, 06:00 UTC</div>",
+    f"<div style='font-size:0.8rem;color:#6b7280;'>Next monthly refresh: {NEXT_REFRESH}, 06:00 UTC</div>",
     unsafe_allow_html=True)
 st.sidebar.divider()
 
@@ -117,7 +120,7 @@ retn_saved = vln.annualize(vln.retention_value((_wb.predicted_value * vln.SWAP_F
 prio = vln.annualize(vln.prioritization_value((_cons.actual_future_volume * vln.SWAP_FEE).sum()))
 cash_new = cv["one_time_fee"] + cv["annual_float"]
 v0, v1, v2, v3, v4 = st.columns([1.4, 1, 1, 1, 1], vertical_alignment="center")
-v0.markdown(f"<div style='font-size:1.1rem;line-height:1.2'>Projected annual value</div><span style='color:#667085;font-size:0.8rem;'>$/yr · full base ×{N}</span>", unsafe_allow_html=True)
+v0.markdown(f"<div style='font-size:1.1rem;line-height:1.2'>Projected annual value</div><span style='color:#6b7280;font-size:0.8rem;'>$/yr · full base ×{N}</span>", unsafe_allow_html=True)
 v1.metric("Net-new revenue /yr", f"${cash_new + retn_saved:,.0f}")
 v2.metric("CASH (fee + float)", f"${cash_new:,.0f}")
 v3.metric("Retention saved", f"${retn_saved:,.0f}")
@@ -163,8 +166,9 @@ with right:
     labels = base.mark_text(align="left", dx=3, color="#333").encode(text=alt.Text("pct:Q", format=".1%"))
     st.altair_chart((bar + labels).properties(height=300, width="container"))
 
-# ---- Segment profiles ----
-st.subheader("Segment profiles (descriptive)")
+# ---- Segment profiles (personas) ----
+st.subheader("Segment profiles (persona)",
+    help="Behavioral personas from k-means clustering. Descriptive only: they don't drive the priority score or recommended actions (see README).")
 prof = view.groupby("segment_name").agg(
     wallets=("wallet", "size"),
     retain_prob=("retain_prob", "mean"),
@@ -172,21 +176,30 @@ prof = view.groupby("segment_name").agg(
     idle_usd=("idle_stablecoin_usd", "median"),
     swaps=("total_swaps", "median"),
     recency_days=("recency_days", "median"),
-).round(2)
-st.dataframe(prof, width="stretch")
-st.caption("Descriptive only. Segments don't drive the priority score or actions (see README).")
+).round(2).reset_index()
+st.dataframe(prof, width="stretch", hide_index=True, column_config={
+    "segment_name": st.column_config.TextColumn("Persona"),
+    "wallets": st.column_config.NumberColumn("Wallets", format="%d", help="Wallets in this persona (sample-level)."),
+    "retain_prob": st.column_config.NumberColumn("Retain prob", format="%.2f", help="Mean retention probability (Model 1) for the persona."),
+    "pred_value": st.column_config.NumberColumn("Predicted value", format="$%.0f", help="Median predicted next-quarter swap volume (Model 2), in dollars."),
+    "idle_usd": st.column_config.NumberColumn("Idle stablecoin", format="$%.2f", help="Median idle USDC + USDT at the cutoff ($)."),
+    "swaps": st.column_config.NumberColumn("Swaps", format="%d", help="Median swap count in the feature window."),
+    "recency_days": st.column_config.NumberColumn("Recency (days)", format="%d", help="Median days since last activity before the cutoff."),
+})
 
 # ---- WHO / WHY / HOW: the target list ----
 st.subheader("Target list")
 show = view.sort_values("priority_score", ascending=False).head(500).copy()
-show["wallet"] = show["wallet"].str.slice(0, 4) + "…" + show["wallet"].str.slice(-4)   # truncate for a public demo
-cols = ["wallet", "segment_name", "recommended_action", "priority_score", "retain_prob",
-        "predicted_value", "idle_stablecoin_usd", "total_volume_usd", "total_swaps", "recency_days"]
+show["explorer"] = "https://solscan.io/account/" + show["wallet"]                       # full address in the link target
+show["wallet"] = show["wallet"].str.slice(0, 4) + "…" + show["wallet"].str.slice(-4)     # truncate the displayed text
+cols = ["wallet", "explorer", "segment_name", "recommended_action", "retain_prob",
+        "predicted_value", "priority_score", "idle_stablecoin_usd", "total_volume_usd", "total_swaps", "recency_days"]
 st.dataframe(
     show[cols], width="stretch", hide_index=True, height=300,
     column_config={
-        "wallet": st.column_config.TextColumn("Wallet", help="On-chain wallet address (truncated for the public demo)."),
-        "segment_name": st.column_config.TextColumn("Segment", help="Behavioral cluster (descriptive; not a targeting input)."),
+        "wallet": st.column_config.TextColumn("Wallet", help="On-chain wallet address (truncated; full address via the Solscan link)."),
+        "explorer": st.column_config.LinkColumn("Explorer", help="Open the full address on Solscan.", display_text="Solscan"),
+        "segment_name": st.column_config.TextColumn("Segment", help="Behavioral persona (descriptive; not a targeting input)."),
         "recommended_action": st.column_config.TextColumn("Recommended action", help="Suggested next step, from the retention/value models plus simple rules."),
         "priority_score": st.column_config.NumberColumn("Priority score", format="$%.0f",
             help="Ranking metric = retain prob × predicted value. A probability (0 to 1) times a dollar volume, so it reads in dollars: the wallet's expected next-quarter swap volume."),
