@@ -168,7 +168,7 @@ with right:
 
 # ---- Segment profiles (personas) ----
 st.subheader("Segment profiles (persona)",
-    help="Behavioral personas from k-means clustering. Descriptive only: they don't drive the priority score or recommended actions (see README).")
+    help=f"Behavioral personas from k-means clustering. Descriptive only: they don't drive the priority score or recommended actions ([see README]({REPO_URL}#phantom-wallet-intelligence)).")
 prof = view.groupby("segment_name").agg(
     wallets=("wallet", "size"),
     retain_prob=("retain_prob", "mean"),
