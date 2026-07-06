@@ -194,7 +194,7 @@ st.dataframe(prof, width="stretch", hide_index=True, column_config={
 
 # ---- WHO / WHY / HOW: the target list ----
 st.subheader("Target list (historical backtest)",
-    help="Wallets scored at cutoff T from features available then. A live campaign would re-score on current features (see README, Next steps).")
+    help="Wallets scored at cutoff T from features available then. A live campaign would re-score on current features.")
 show = view.sort_values("priority_score", ascending=False).head(500).copy()
 show["explorer"] = "https://solscan.io/account/" + show["wallet"]                       # full address in the link target
 show["wallet"] = show["wallet"].str.slice(0, 4) + "…" + show["wallet"].str.slice(-4)     # truncate the displayed text
@@ -222,4 +222,4 @@ st.dataframe(
             help="Days since the wallet's last activity before the cutoff."),
     })
 st.caption(f"Ranked by priority; top 500, addresses truncated. Counts are sample-level (×~{N} for the full base). "
-           "Card targeting is a hypothesis (ignores KYC/geo eligibility); see README.")
+           f"Card targeting is a hypothesis (ignores KYC/geo eligibility); see the [README]({REPO_URL}).")
