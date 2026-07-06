@@ -1,0 +1,9 @@
+data/
+.venv/
+__pycache__/
+*.pyc
+.env
+.obsidian/
+.claude/
+.DS_Store
+# note: snapshot/ is intentionally committed (small demo DB the deployed app reads)
