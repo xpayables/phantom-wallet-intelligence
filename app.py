@@ -1,6 +1,7 @@
 """Phantom Wallet Intelligence: cross-sell & retention targeting dashboard.
 Reads `scored` + `features` (the snapshot if present, else the full DB). Run:  streamlit run app.py
 """
+import datetime as dt
 import os
 
 import altair as alt
@@ -12,6 +13,18 @@ import config
 import valuation as vln
 
 REPO_URL = "https://github.com/xpayables/phantom-wallet-intelligence"
+
+# Display strings derived from config so the UI scales as the window rolls (no hard-coded dates).
+N = vln.SAMPLE_FACTOR                                     # hash-sample factor; sample x N ~ full base
+def _fmt_day(iso):                                        # "2025-10-01 00:00:00" -> "Oct 1 2025"
+    d = dt.date.fromisoformat(iso[:10])
+    return f"{d.strftime('%b')} {d.day} {d.year}"
+FEAT_START = _fmt_day(config.WINDOW_START)
+FEAT_END = _fmt_day((dt.date.fromisoformat(config.CUTOFF_T) - dt.timedelta(days=1)).isoformat())  # T-1 = last feature day
+def _first_of_next_month(d):
+    y, m = (d.year + 1, 1) if d.month == 12 else (d.year, d.month + 1)
+    return dt.date(y, m, 1)
+NEXT_REFRESH = _fmt_day(_first_of_next_month(dt.datetime.now(dt.timezone.utc).date()).isoformat())  # next scheduled cron
 
 st.set_page_config(page_title="Phantom Wallet Intelligence", layout="wide")
 
@@ -55,16 +68,20 @@ st.sidebar.markdown(
     f'<a href="{REPO_URL}" target="_blank" style="text-decoration:none;font-weight:500;color:#6E56CF;">'
     '<svg height="15" width="15" viewBox="0 0 16 16" style="vertical-align:-2px;fill:currentColor;margin-right:6px;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Methodology &amp; code</a>',
     unsafe_allow_html=True)
+st.sidebar.caption(f"Cutoff T = {config.CUTOFF_T}",
+    help="T is the analysis cutoff: features use activity before T; retention and value are measured in the 3 months after.")
 st.sidebar.markdown(
-    "<div style='font-size:0.72rem;color:#8a8d9b;margin-top:.4rem;'>Data refreshes monthly (1st, 06:00 UTC)</div>",
+    f"<div style='font-size:0.72rem;color:#8a8d9b;'>Next monthly refresh: {NEXT_REFRESH}, 06:00 UTC</div>",
     unsafe_allow_html=True)
 st.sidebar.divider()
 
 st.sidebar.subheader("Filters")
 acts = st.sidebar.multiselect("Recommended action", sorted(df.recommended_action.unique()), placeholder="All actions")
 segs = st.sidebar.multiselect("Segment", sorted(df.segment_name.unique()), placeholder="All segments")
-min_bal = st.sidebar.number_input("Min idle stablecoin (USDC+USDT, $)", 0, 100000, 0,
-    help="Show only wallets holding at least this much idle stablecoin (USDC + USDT, valued in USD). Useful for sizing the card/CASH opportunity.")
+min_bal = st.sidebar.select_slider("Min idle stablecoin (USDC+USDT)",
+    options=[0, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 50000], value=0,
+    format_func=lambda x: f"${x:,}",
+    help="Show only wallets holding at least this much idle stablecoin (USDC + USDT, USD). Useful for sizing the card/CASH opportunity.")
 seg_mask = df.segment_name.isin(segs) if segs else pd.Series(True, index=df.index)
 act_mask = df.recommended_action.isin(acts) if acts else pd.Series(True, index=df.index)
 view = df[seg_mask & act_mask & (df.idle_stablecoin_usd >= min_bal)]
@@ -84,8 +101,8 @@ with st.sidebar.expander("Value assumptions (projected)", expanded=False):
 # ---- Cohort row: label on the left, cards on the right ----
 c0, c1, c2, c3, c4 = st.columns([1.4, 1, 1, 1, 1], vertical_alignment="center")
 c0.markdown("<div style='font-size:1.1rem;line-height:1.2'>Cohort</div>", unsafe_allow_html=True)
-c0.caption("1/60 sample", help="1/60 deterministic hash sample of wallets that paid Phantom swap fees on Solana, "
-           "active in the feature window (Oct 1 2025 to Mar 31 2026). Multiply by about 60 for the full base.")
+c0.caption(f"1/{N} sample", help=f"1/{N} deterministic hash sample of wallets that paid Phantom swap fees on Solana, "
+           f"active in the feature window ({FEAT_START} to {FEAT_END}). Multiply by about {N} for the full base.")
 c1.metric("Wallets in view", f"{len(view):,}")
 c2.metric("Card/CASH targets", f"{view.recommended_action.str.startswith('Card').sum():,}")
 c3.metric("Meaningful holders (>$10)", f"{view.is_meaningful_holder.sum():,}")
@@ -100,7 +117,7 @@ retn_saved = vln.annualize(vln.retention_value((_wb.predicted_value * vln.SWAP_F
 prio = vln.annualize(vln.prioritization_value((_cons.actual_future_volume * vln.SWAP_FEE).sum()))
 cash_new = cv["one_time_fee"] + cv["annual_float"]
 v0, v1, v2, v3, v4 = st.columns([1.4, 1, 1, 1, 1], vertical_alignment="center")
-v0.markdown("<div style='font-size:1.1rem;line-height:1.2'>Projected annual value</div><span style='color:#667085;font-size:0.8rem;'>$/yr · full base ×60</span>", unsafe_allow_html=True)
+v0.markdown(f"<div style='font-size:1.1rem;line-height:1.2'>Projected annual value</div><span style='color:#667085;font-size:0.8rem;'>$/yr · full base ×{N}</span>", unsafe_allow_html=True)
 v1.metric("Net-new revenue /yr", f"${cash_new + retn_saved:,.0f}")
 v2.metric("CASH (fee + float)", f"${cash_new:,.0f}")
 v3.metric("Retention saved", f"${retn_saved:,.0f}")
@@ -180,10 +197,10 @@ st.dataframe(
         "idle_stablecoin_usd": st.column_config.NumberColumn("Idle stablecoin", format="$%.2f",
             help="USDC + USDT held idle at the cutoff ($). The CASH/card signal."),
         "total_volume_usd": st.column_config.NumberColumn("Total volume", format="$%.0f",
-            help="Swap volume in the 6-month feature window ($)."),
+            help=f"Swap volume in the {config.FEATURE_MONTHS}-month feature window ($)."),
         "total_swaps": st.column_config.NumberColumn("Swaps", format="%d", help="Swap count in the feature window."),
         "recency_days": st.column_config.NumberColumn("Recency (days)", format="%d",
             help="Days since the wallet's last activity before the cutoff."),
     })
-st.caption("Ranked by priority; top 500, addresses truncated. Counts are sample-level (×~60 for the full base). "
+st.caption(f"Ranked by priority; top 500, addresses truncated. Counts are sample-level (×~{N} for the full base). "
            "Card targeting is a hypothesis (ignores KYC/geo eligibility); see README.")

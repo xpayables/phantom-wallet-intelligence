@@ -32,6 +32,7 @@ jobs:
       - name: Rebuild snapshot from Dune
         env:
           DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}
+          PYTHONUNBUFFERED: "1"     # stream logs live (CI has no TTY)
         run: |
           mkdir -p data
           python extract.py

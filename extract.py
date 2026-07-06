@@ -94,7 +94,8 @@ while d < end:
         "end_date": chunk_end.strftime("%Y-%m-%d %H:%M:%S"),
     })
     if len(df):
-        df["activity_day"] = pd.to_datetime(df["activity_day"], errors="coerce")
+        # Parse as UTC so the day is independent of the host timezone.
+        df["activity_day"] = pd.to_datetime(df["activity_day"], utc=True, errors="coerce").dt.tz_localize(None)
         df["fee_swaps"] = pd.to_numeric(df["fee_swaps"], errors="coerce")
         df["fee_usd"] = pd.to_numeric(df["fee_usd"], errors="coerce")   # "<nil>" -> NaN -> NULL
         con.execute(
