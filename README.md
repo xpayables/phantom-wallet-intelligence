@@ -6,9 +6,9 @@ Rank a crypto wallet's existing users for **card/CASH cross-sell and retention**
 
 [![Phantom Wallet Intelligence dashboard](assets/dashboard.png)](https://phantom-wallet-intelligence.streamlit.app)
 
-*Figures, windows, and the screenshot in this README are from a reference run (cutoff `T` = 2026-03-31). The live dashboard reflects the latest monthly snapshot, so its numbers will differ.*
+*Figures and windows are from the current monthly snapshot (cutoff `T` = 2026-04-01); the live dashboard recomputes them on each refresh. The embedded screenshot is illustrative, from an earlier run.*
 
-**Takeaway:** a **retention** model and a **value** model combine into a priority score that beats a naive past-volume sort by a statistically significant **+7%** on the consumer base, projecting to a tunable **~$0.3M/yr** case. Each model carries its own metric: retention AUC 0.80, priority-score lift +7%, value R², segmentation silhouette. Full results below, *after* the methodology.
+**Takeaway:** a **retention** model and a **value** model combine into a priority score that beats a naive past-volume sort on the consumer base (**significant at the top quintile**; the top-decile lift is larger but window-dependent), projecting to a tunable **~$0.3M/yr** case. Each model carries its own metric: retention AUC 0.80, priority-score lift, value R², segmentation silhouette. Full results below, *after* the methodology.
 
 ## Purpose · audience
 - **Why:** a wallet's highest-margin revenue is card interchange (~100-130 bps/swipe) and **CASH float (~3-4%/yr net on idle balances)**: but growth attention is finite, so the question is *which existing users to target*.
@@ -21,9 +21,9 @@ Rank a crypto wallet's existing users for **card/CASH cross-sell and retention**
 
 ## Observation windows
 - **Unit:** one wallet.
-- **Cutoff `T` = 2026-03-31**:  6 months of history and 3 months of observed future.
+- **Cutoff `T`** (features dated before T, outcomes measured from T): rolls to the **first of each month**; the current snapshot uses `T` = 2026-04-01.
 - **Feature window** = the 6 months before T (**Oct 1 2025 to Mar 31 2026**).
-- **Label window** = the 3 months after T (**Apr 1 to Jun 30 2026**): where we observe churn, value.
+- **Label window** = the 3 months from T (**Apr 1 to Jun 30 2026**): where we observe churn, value.
 
 ## Methodology
 
@@ -71,7 +71,7 @@ Three models: **two predict, one describes**. Multiplying the two predictors giv
 
 ### Priority score = model 1 × model 2  *(the ranking used for targeting)*
 - **Measured by:** **value-capture lift** vs. the naive baseline (sort by *past* volume, take the top X%): the *extra* future volume captured.
-- **Result:** **+7%** more future volume at the top decile on the consumer base (bootstrap CI **[+2.6%, +13.3%]**, stays above 0 → **significant**). On the *full* population the lift shrinks to ~+1%: value is so concentrated (one wallet ≈ 54%) that any sort already captures the outliers, so the consumer-base number is the one that reflects skill.
+- **Result:** on the consumer base the model beats a past-volume sort at every top-X% cut. The **top quintile is significant** (bootstrap CI above 0); the **top decile is larger (~+5 to 7%) but window-dependent**, with a CI that can span 0, so treat the quintile as the robust claim. On the *full* population the lift shrinks to ~+1%: value is so concentrated (one wallet ≈ 54%) that any sort already captures the outlier, so the consumer-base number reflects skill.
 
 ### Model 3. Segmentation (k-means clustering, descriptive)
 - **Groups:** wallets by their **7 behavioral features** (not the priority score) into `k` profiles: "what kind of user?"
@@ -80,17 +80,17 @@ Three models: **two predict, one describes**. Multiplying the two predictors giv
 
 ## Recommendation & value
 
-For each wallet the models produce three numbers: **retention probability**, **predicted value**, and **idle stablecoin balance**. A rule turns those into **one action**, each with a **projected annual value** (economic model in `valuation.py`, tunable via dashboard sliders). The dollar and count figures below are the **reference run (`T` = 2026-03-31)**; `value.py` and the live dashboard recompute them for the current window. Sizes shown as *sample → full base (×60), % of base*:
+For each wallet the models produce three numbers: **retention probability**, **predicted value**, and **idle stablecoin balance**. A rule turns those into **one action**, each with a **projected annual value** (economic model in `valuation.py`, tunable via dashboard sliders). The dollar and count figures below are the **current snapshot (`T` = 2026-04-01)**; `value.py` and the live dashboard recompute them on each refresh. Sizes shown as *sample → full base (×60), % of base*:
 
-- **Card/CASH cross-sell**: sticky (`retain ≥ 0.5`) **and** holds ≥ $10 idle stablecoin → **230 → ~13,800 (0.7%)**. 
-	- Prompt them to convert idle USDC → CASH. **≈ $48k/yr** (0.85% swap fee once + ~3.25% net float). *Signal: idle balance + retention, not swap volume.*
-- **Win-back**: at-risk (`retain < 0.3`) **and** high predicted value → **6,010 → ~360,600 (18.5%)**. 
-	- Re-engagement campaign. **≈ $283k/yr saved** (15% save-rate).
-- **Deepen**: sticky **and** high predicted value → **1,071 → ~64,300 (3.3%)**. 
+- **Card/CASH cross-sell**: sticky (`retain ≥ 0.5`) **and** holds ≥ $10 idle stablecoin → **216 → ~13,000 (0.7%)**. 
+	- Prompt them to convert idle USDC → CASH. **≈ $49k/yr** (0.85% swap fee once + ~3.25% net float). *Signal: idle balance + retention, not swap volume.*
+- **Win-back**: at-risk (`retain < 0.3`) **and** high predicted value → **6,063 → ~363,800 (18.5%)**. 
+	- Re-engagement campaign. **≈ $289k/yr saved** (15% save-rate).
+- **Deepen**: sticky **and** high predicted value → **1,117 → ~67,000 (3.4%)**. 
 	- Surface perps / new features (a product nudge, not dollar-modeled).
 - **Handle 1:1**: high-volume outliers → **33 → ~2,000 (0.1%)**. 
 	- Institutional / account-management, not a mass campaign.
-- **Monitor**: everyone else → **~1.5M (77%)**. No spend.
+- **Monitor**: everyone else → **~1.52M (77%)**. No spend.
 - **Prioritization** (cross-cutting): targeting the top decile by priority score reaches **≈ $0.6M/yr** more of next-quarter volume than a past-volume sort, a campaign-efficiency gain, not additive net-new.
 
 **Base-case net-new ≈ $0.3M/yr** (CASH + retention saved), plus the ~$0.6M efficiency. Assumptions: conversion 4%, save-rate 15%, net float 3.25%, fee 0.85%, lift 7%. Exact figures print from `value.py`.
@@ -104,6 +104,13 @@ Conversion, save-rate, and float can't be read from on-chain data, so the dashbo
 - **Action thresholds are hand-set**: the 0.5 / 0.3 retention cutoffs are round, not derived from economics.
 - **Features are swap-derived only**: no token diversity, portfolio value, or market-regime context; `tenure` is censored to the 6-month window.
 - **Single 3-month window**: not backtested across market regimes, and the annual dollar figures annualize ×4 from one quarter.
+
+## Next steps toward production
+- **Rolling temporal backtest**: validate the lift across several cutoffs (mean, variance), not a single window.
+- **Causal test**: a treatment/holdout experiment (target segments, guardrails, minimum detectable effect) to prove the projected lift and dollar value.
+- **Live scoring**: rank wallets from today's features (labels train the model; scoring needs only features), so a campaign acts on current state rather than the cutoff snapshot shown here.
+- **Automated snapshot gate**: extend the `features.py` DQ assertions to a committed-snapshot coverage and freshness check.
+- **Competitor / TAM depth**: MetaMask Card context and portfolio-wide CASH addressable beyond idle stablecoins.
 
 ## Reproduce locally (dev)
 For a developer rebuilding the pipeline. End users open the live demo above.

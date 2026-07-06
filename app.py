@@ -51,8 +51,12 @@ st.markdown("""
 
 @st.cache_data
 def load():
-    db = "snapshot/demo.duckdb" if os.path.exists("snapshot/demo.duckdb") else config.DB_PATH
-    con = duckdb.connect(db, read_only=True)
+    if os.path.exists("snapshot/scored.parquet"):        # deployed: version-safe Parquet snapshot
+        return duckdb.sql("""
+            SELECT s.*, f.value_label_volume_usd AS actual_future_volume
+            FROM 'snapshot/scored.parquet' s JOIN 'snapshot/features.parquet' f USING (wallet)
+        """).df()
+    con = duckdb.connect(config.DB_PATH, read_only=True)  # local dev: read the full pipeline DB
     df = con.execute("""
         SELECT s.*, f.value_label_volume_usd AS actual_future_volume
         FROM scored s JOIN features f USING (wallet)
@@ -105,7 +109,8 @@ with st.sidebar.expander("Value assumptions (projected)", expanded=False):
 c0, c1, c2, c3, c4 = st.columns([1.4, 1, 1, 1, 1], vertical_alignment="center")
 c0.markdown("<div style='font-size:1.1rem;line-height:1.2'>Cohort</div>", unsafe_allow_html=True)
 c0.caption(f"1/{N} sample", help=f"1/{N} deterministic hash sample of wallets that paid Phantom swap fees on Solana, "
-           f"active in the feature window ({FEAT_START} to {FEAT_END}). Multiply by about {N} for the full base.")
+           f"active in the feature window: the {config.FEATURE_MONTHS} months before cutoff T ({FEAT_START} to {FEAT_END}). "
+           f"Multiply by about {N} for the full base.")
 c1.metric("Wallets in view", f"{len(view):,}")
 c2.metric("Card/CASH targets", f"{view.recommended_action.str.startswith('Card').sum():,}")
 c3.metric("Meaningful holders (>$10)", f"{view.is_meaningful_holder.sum():,}")
@@ -188,7 +193,8 @@ st.dataframe(prof, width="stretch", hide_index=True, column_config={
 })
 
 # ---- WHO / WHY / HOW: the target list ----
-st.subheader("Target list")
+st.subheader("Target list (historical backtest)",
+    help="Wallets scored at cutoff T from features available then. A live campaign would re-score on current features (see README, Next steps).")
 show = view.sort_values("priority_score", ascending=False).head(500).copy()
 show["explorer"] = "https://solscan.io/account/" + show["wallet"]                       # full address in the link target
 show["wallet"] = show["wallet"].str.slice(0, 4) + "…" + show["wallet"].str.slice(-4)     # truncate the displayed text

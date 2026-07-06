@@ -6,4 +6,4 @@ __pycache__/
 .obsidian/
 .claude/
 .DS_Store
-# note: snapshot/ is intentionally committed (small demo DB the deployed app reads)
+# note: snapshot/*.parquet is intentionally committed (small demo data the deployed app reads)

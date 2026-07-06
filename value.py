@@ -4,18 +4,27 @@ Reads `scored` + `features`, aggregates the target segments, and applies the eco
 valuation.py across conservative/base/upside assumptions. All figures scaled to the full base (x60)
 and PROJECTED (a holdout test is required to prove causal lift). Run:  python value.py
 """
+import os
+
 import duckdb
 
 import config
 import valuation as v
 
-con = duckdb.connect(config.DB_PATH, read_only=True)
-df = con.execute("""
-    SELECT s.recommended_action, s.idle_stablecoin_usd, s.predicted_value,
-           s.is_whale, f.value_label_volume_usd AS future_volume
-    FROM scored s JOIN features f USING (wallet)
-""").df()
-con.close()
+if os.path.exists("snapshot/scored.parquet"):            # same source the app + README figures use
+    df = duckdb.sql("""
+        SELECT s.recommended_action, s.idle_stablecoin_usd, s.predicted_value,
+               s.is_whale, f.value_label_volume_usd AS future_volume
+        FROM 'snapshot/scored.parquet' s JOIN 'snapshot/features.parquet' f USING (wallet)
+    """).df()
+else:
+    con = duckdb.connect(config.DB_PATH, read_only=True)
+    df = con.execute("""
+        SELECT s.recommended_action, s.idle_stablecoin_usd, s.predicted_value,
+               s.is_whale, f.value_label_volume_usd AS future_volume
+        FROM scored s JOIN features f USING (wallet)
+    """).df()
+    con.close()
 
 card = df[df.recommended_action.str.startswith("Card")]
 winback = df[df.recommended_action.str.startswith("Win-back")]

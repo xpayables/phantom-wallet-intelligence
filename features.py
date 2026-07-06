@@ -77,11 +77,15 @@ churn = scalar("SELECT avg(CAST(churn_label AS DOUBLE)) FROM features WHERE NOT 
 bad_density = scalar("SELECT count(*) FROM features WHERE activity_density > 1.0001 OR activity_density < 0")
 neg_idle = scalar("SELECT count(*) FROM features WHERE idle_stablecoin_usd < 0")
 
-assert n > 1000, f"cohort too small ({n}) -- extraction likely incomplete"
-assert dups == 0, f"{dups} duplicate wallets in features"
-assert 0.01 < churn < 0.99, f"churn rate {churn:.1%} outside sane range -- check the T split"
-assert bad_density == 0, f"{bad_density} rows with activity_density outside [0,1]"
-assert neg_idle == 0, f"{neg_idle} rows with negative idle balance"
+def _check(ok, msg):                                 # explicit raise (assert is stripped under python -O)
+    if not ok:
+        raise RuntimeError(msg)
+
+_check(n > 1000, f"cohort too small ({n}) -- extraction likely incomplete")
+_check(dups == 0, f"{dups} duplicate wallets in features")
+_check(0.01 < churn < 0.99, f"churn rate {churn:.1%} outside sane range -- check the T split")
+_check(bad_density == 0, f"{bad_density} rows with activity_density outside [0,1]")
+_check(neg_idle == 0, f"{neg_idle} rows with negative idle balance")
 print(f"DQ checks passed: {n:,} rows, 0 dups, churn {churn:.1%}, density in range, idle >= 0\n")
 
 # ---- summary (humans = non-bot cohort) ----
