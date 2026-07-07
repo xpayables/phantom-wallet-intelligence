@@ -91,9 +91,9 @@ st.sidebar.markdown(
     f"Cutoff T = {CUTOFF_T}<br>Next monthly refresh: {NEXT_REFRESH}, 06:00 UTC</div>",
     unsafe_allow_html=True)
 st.sidebar.markdown(
-    f'<a href="{REPO_URL}" target="_blank" title="Methodology &amp; code" '
-    'style="color:#6E56CF;display:inline-block;margin-top:.55rem;">'
-    '<svg height="20" width="20" viewBox="0 0 16 16" style="fill:currentColor;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg></a>',
+    f'<a href="{REPO_URL}" target="_blank" '
+    'style="color:#6E56CF;font-weight:500;text-decoration:none;display:inline-block;margin-top:.55rem;">'
+    '<svg height="16" width="16" viewBox="0 0 16 16" style="fill:currentColor;vertical-align:-3px;margin-right:6px;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>methodology &amp; code</a>',
     unsafe_allow_html=True)
 st.sidebar.divider()
 
@@ -111,10 +111,8 @@ act_mask = df.recommended_action.isin(acts) if acts else pd.Series(True, index=d
 view = df[seg_mask & act_mask & (df.idle_stablecoin_usd >= min_bal)]
 
 with st.sidebar.expander("Value assumptions (projected)", expanded=False):
-    st.caption("About these inputs", help="The projected $ rests on three things on-chain data can't measure: "
-               "conversion, win-back save-rate, and CASH yield. Enter your own estimates to re-run the projection "
-               "(e.g. \"if campaigns convert 6% and save 20% of at-risk, what's it worth?\"). Changes the dollar "
-               "estimate only, not the recommended wallets.")
+    st.caption("About these inputs", help="Three inputs on-chain data can't measure. Adjust them to re-run the "
+               "projection; the dollar figures change, the recommended wallets don't.")
     conv = st.slider("CASH conversion rate", 0, 15, 4, 1, format="%d%%",
                      help="Share of card/CASH candidates who convert idle USDC to CASH.") / 100
     save = st.slider("Win-back save-rate", 0, 30, 15, 1, format="%d%%",
@@ -138,11 +136,10 @@ retn_pct = retn_saved / net_new if net_new else 0
 st.markdown(
     "<div style='background:#f1eefc;border-radius:12px;padding:14px 18px;margin-bottom:1rem;"
     "font-size:1.02rem;line-height:1.5;'>"
-    f"💡 <b>Focus, don't blanket.</b> Model-targeting the existing base projects "
-    f"<b style='color:#6E56CF'>~${net_new/1e3:,.0f}k/yr net-new</b> revenue, "
-    f"{retn_pct:.0%} of it from retaining at-risk high-value traders, a bigger lever than card cross-sell. "
-    f"Ranking by the model reaches <b style='color:#6E56CF'>~${prio/1e3:,.0f}k/yr</b> more of existing "
-    f"volume than a past-volume sort, at the same spend."
+    f"💡 <b>Focus, don't blanket.</b> The model targets <b>who's about to churn</b> and "
+    f"<b>who fits CASH</b> (signals a past-volume sort can't see), projecting "
+    f"<b style='color:#6E56CF'>~${net_new/1e3:,.0f}k/yr net-new</b>, "
+    f"{retn_pct:.0%} from winning back at-risk high-value traders."
     "</div>", unsafe_allow_html=True)
 
 # ---- Cohort row: label on the left, cards on the right ----
