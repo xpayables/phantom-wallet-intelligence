@@ -4,6 +4,7 @@ Calls the Dune API directly (requests) to pin the engine to Small - the free tie
 dune-client hard-codes medium/large. Credit-safe: hash-sampled queries, a PULL_BALANCES gate, and a
 hard row cap on every fetch. Run:  python extract.py
 """
+import os
 import time
 from datetime import datetime, timedelta
 
@@ -70,6 +71,14 @@ CREATE TABLE IF NOT EXISTS activity (
     wallet VARCHAR, activity_day TIMESTAMP, fee_swaps BIGINT, fee_usd DOUBLE
 )""")
 
+# Rolling-window store: git holds the committed activity Parquet between ephemeral runs (our "memory").
+# Seed it, pull only the new chunks below (already-loaded ones are skipped), then re-write a fixed
+# ~9-month window at the end -- so each run adds a new month and drops the oldest.
+ACTIVITY_STORE = "snapshot/activity.parquet"
+if os.path.exists(ACTIVITY_STORE):
+    con.execute(f"INSERT INTO activity SELECT * FROM '{ACTIVITY_STORE}'")
+    print(f"seeded {con.execute('SELECT count(*) FROM activity').fetchone()[0]:,} rows from {ACTIVITY_STORE}")
+
 
 def already_loaded(start, end):
     return con.execute(
@@ -104,6 +113,19 @@ while d < end:
         )
     d = chunk_end
     time.sleep(1)
+
+# Roll the window + dedupe: keep only [WINDOW_START, WINDOW_END), one row per wallet-day, so the store
+# stays a fixed ~9-month size (a new month in, the oldest out) and re-runs never double-count.
+con.execute(f"""
+    CREATE OR REPLACE TABLE activity AS
+    SELECT wallet, activity_day, any_value(fee_swaps) AS fee_swaps, any_value(fee_usd) AS fee_usd
+    FROM activity
+    WHERE CAST(activity_day AS DATE) >= DATE '{config.WINDOW_START[:10]}'
+      AND CAST(activity_day AS DATE) <  DATE '{config.WINDOW_END[:10]}'
+    GROUP BY wallet, activity_day""")
+os.makedirs("snapshot", exist_ok=True)
+con.execute(f"COPY activity TO '{ACTIVITY_STORE}' (FORMAT PARQUET)")   # persist the rolling store to git
+print(f"wrote {ACTIVITY_STORE}: {con.execute('SELECT count(*) FROM activity').fetchone()[0]:,} rows (rolling window)")
 
 # 2. Balances at cutoff T (gated -- only when you turn it on for the full run).
 if config.PULL_BALANCES:

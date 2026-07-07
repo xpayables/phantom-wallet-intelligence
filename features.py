@@ -7,6 +7,8 @@ import duckdb
 import config
 
 T = config.CUTOFF_T           # date-only cutoff (UTC); features < T, labels >= T
+WSTART = config.WINDOW_START[:10]     # window bounds (the rolling store may keep edge rows outside it)
+WEND = config.WINDOW_END[:10]
 BOT_MAX_DAILY_SWAPS = 100     # a wallet exceeding this in a single day is flagged as likely automated
 
 con = duckdb.connect(config.DB_PATH)
@@ -30,7 +32,7 @@ WITH feat AS (                                   -- feature window: activity str
                     AND CAST(activity_day AS DATE) >= DATE '{T}' - INTERVAL 60 DAY THEN fee_swaps ELSE 0 END)  AS sw_30_60,
            count(CASE WHEN CAST(activity_day AS DATE) >= DATE '{T}' - INTERVAL 30 DAY THEN 1 END)              AS active_days_last_30d
     FROM activity
-    WHERE CAST(activity_day AS DATE) < DATE '{T}'
+    WHERE CAST(activity_day AS DATE) >= DATE '{WSTART}' AND CAST(activity_day AS DATE) < DATE '{T}'
     GROUP BY wallet
 ),
 lab AS (                                         -- label window: activity on/after T
@@ -38,7 +40,7 @@ lab AS (                                         -- label window: activity on/af
            sum(fee_swaps) AS label_swaps,
            COALESCE(sum(fee_usd), 0) / 0.0085 AS label_volume_usd
     FROM activity
-    WHERE CAST(activity_day AS DATE) >= DATE '{T}'
+    WHERE CAST(activity_day AS DATE) >= DATE '{T}' AND CAST(activity_day AS DATE) < DATE '{WEND}'
     GROUP BY wallet
 )
 SELECT f.wallet,
