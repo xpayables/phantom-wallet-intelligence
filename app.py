@@ -45,7 +45,7 @@ st.markdown("""
 <style>
   .block-container, [data-testid="stMainBlockContainer"] { padding-top: 3rem !important; }
   [data-testid="stSidebarUserContent"],
-  section[data-testid="stSidebar"] > div:first-child { padding-top: 0.25rem !important; }
+  section[data-testid="stSidebar"] > div:first-child { padding-top: 0 !important; }
   h3 { font-size:1.1rem !important; font-weight:400 !important; margin:0.3rem 0 0.15rem !important; }
   /* KPI cards: soft Phantom-purple color blocks, no border */
   [data-testid="stMetric"] { background:#f1eefc; border:none; border-radius:12px;
@@ -83,7 +83,7 @@ df = load()
 
 # ---- sidebar: title + filters ----
 st.sidebar.markdown(
-    "<div style='font-size:1.8rem;font-weight:800;line-height:1.05;margin:0 0 .7rem;color:#4a4a4a;'>"
+    "<div style='font-size:1.8rem;font-weight:800;line-height:1.05;margin:-1.2rem 0 .7rem;color:#4a4a4a;'>"
     "Phantom<br>Wallet<br>Intelligence</div>"
     "<div style='font-size:0.85rem;color:#6b7280;line-height:1.35;'>"
     "Who to target on your existing base: card/CASH cross-sell and retention, ranked and dollar-quantified."
@@ -94,8 +94,8 @@ st.sidebar.markdown(
     unsafe_allow_html=True)
 st.sidebar.markdown(
     f'<a href="{REPO_URL}" target="_blank" '
-    'style="color:#6E56CF;font-weight:500;text-decoration:none;display:inline-block;margin-top:.55rem;">'
-    '<svg height="16" width="16" viewBox="0 0 16 16" style="fill:currentColor;vertical-align:-3px;margin-right:6px;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>methodology &amp; code</a>',
+    'style="color:#6E56CF;font-weight:500;font-size:0.85rem;text-decoration:none;display:inline-block;margin-top:.55rem;">'
+    '<svg height="14" width="14" viewBox="0 0 16 16" style="fill:currentColor;vertical-align:-2px;margin-right:6px;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>methodology &amp; code</a>',
     unsafe_allow_html=True)
 st.sidebar.divider()
 
