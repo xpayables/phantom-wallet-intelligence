@@ -7,7 +7,7 @@ SWAP_FEE = 0.0085           # 0.85% Phantom fee -- observed, and it applies to C
 FLOAT_RATE_YR = 0.0325      # net float on idle CASH: ~3.7% T-bill yield (Jul 2026) minus Bridge/Stripe
                             # issuance fee, no user pass-through. (5% was the stale 2023-24 rate regime.)
 LABEL_MONTHS = 3            # label-window length -> annualize fee revenue with x(12/LABEL_MONTHS)
-LIFT_TOP_DECILE = 0.07      # measured ex-whale top-10% lift, 95% CI [+2.9%, +13.8%] (model.py bootstrap)
+LIFT_TOP_DECILE = 0.07      # fallback only; live runs read this run's measured lift from snapshot/metadata.json
 
 CONVERSION = {"conservative": 0.02, "base": 0.04, "upside": 0.08}   # warm in-app cross-sell (cold mail ~2-4%)
 SAVE_RATE = {"low": 0.10, "base": 0.15, "high": 0.25}               # win-back reactivation (industry ~10-30%)

@@ -2,6 +2,7 @@
 Reads `scored` + `features` (the snapshot if present, else the full DB). Run:  streamlit run app.py
 """
 import datetime as dt
+import json
 import os
 
 import altair as alt
@@ -14,13 +15,24 @@ import valuation as vln
 
 REPO_URL = "https://github.com/xpayables/phantom-wallet-intelligence"
 
-# Display strings derived from config so the UI scales as the window rolls (no hard-coded dates).
+# Snapshot metadata contract: read the run's actual window + metrics from the committed snapshot, not
+# live config (which can drift from the snapshot across a month boundary). Falls back to config locally.
+def _load_meta():
+    try:
+        with open("snapshot/metadata.json") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"cutoff_t": config.CUTOFF_T, "window_start": config.WINDOW_START[:10],
+                "window_end": config.WINDOW_END[:10], "lift_decile_exwhale": vln.LIFT_TOP_DECILE}
+META = _load_meta()
+
 N = vln.SAMPLE_FACTOR                                     # hash-sample factor; sample x N ~ full base
-def _fmt_day(iso):                                        # "2025-10-01 00:00:00" -> "Oct 1 2025"
+CUTOFF_T = META["cutoff_t"]
+def _fmt_day(iso):                                        # "2025-10-01" -> "Oct 1 2025"
     d = dt.date.fromisoformat(iso[:10])
     return f"{d.strftime('%b')} {d.day} {d.year}"
-FEAT_START = _fmt_day(config.WINDOW_START)
-FEAT_END = _fmt_day((dt.date.fromisoformat(config.CUTOFF_T) - dt.timedelta(days=1)).isoformat())  # T-1 = last feature day
+FEAT_START = _fmt_day(META["window_start"])
+FEAT_END = _fmt_day((dt.date.fromisoformat(CUTOFF_T) - dt.timedelta(days=1)).isoformat())  # T-1 = last feature day
 def _first_of_next_month(d):
     y, m = (d.year + 1, 1) if d.month == 12 else (d.year, d.month + 1)
     return dt.date(y, m, 1)
@@ -75,7 +87,7 @@ st.sidebar.markdown(
     f'<a href="{REPO_URL}" target="_blank" style="text-decoration:none;font-weight:500;color:#6E56CF;">'
     '<svg height="15" width="15" viewBox="0 0 16 16" style="vertical-align:-2px;fill:currentColor;margin-right:6px;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Methodology &amp; code</a>',
     unsafe_allow_html=True)
-st.sidebar.caption(f"Cutoff T = {config.CUTOFF_T}",
+st.sidebar.caption(f"Cutoff T = {CUTOFF_T}",
     help="T is the analysis cutoff: features use activity before T; retention and value are measured in the 3 months after.")
 st.sidebar.markdown(
     f"<div style='font-size:0.8rem;color:#6b7280;'>Next monthly refresh: {NEXT_REFRESH}, 06:00 UTC</div>",
@@ -105,6 +117,29 @@ with st.sidebar.expander("Value assumptions (projected)", expanded=False):
     floatr = st.slider("CASH float rate /yr", 0.0, 5.0, 3.25, 0.25, format="%.2f%%",
                        help="Annual yield Phantom nets on idle CASH (T-bill yield minus Bridge/Stripe fee).") / 100
 
+# ---- projected-value figures (computed up front; drive the exec banner + the value row below) ----
+_card = df[df.recommended_action.str.startswith("Card")]
+_wb = df[df.recommended_action.str.startswith("Win-back")]
+_cons = df[~df.is_whale]
+cv = vln.cash_value(_card.idle_stablecoin_usd.sum(), conv, float_rate=floatr)
+retn_saved = vln.annualize(vln.retention_value((_wb.predicted_value * vln.SWAP_FEE).sum(), save)["saved"])
+prio = vln.annualize(vln.prioritization_value((_cons.actual_future_volume * vln.SWAP_FEE).sum(),
+                                              lift=META.get("lift_decile_exwhale", vln.LIFT_TOP_DECILE)))
+cash_new = cv["one_time_fee"] + cv["annual_float"]
+net_new = cash_new + retn_saved
+retn_pct = retn_saved / net_new if net_new else 0
+
+# ---- exec highlight: the one-line "so what", from the live figures ----
+st.markdown(
+    "<div style='background:#f1eefc;border-radius:12px;padding:14px 18px;margin-bottom:1rem;"
+    "font-size:1.02rem;line-height:1.5;'>"
+    f"💡 <b>Focus, don't blanket.</b> Model-targeting the existing base projects "
+    f"<b style='color:#6E56CF'>~${net_new/1e3:,.0f}k/yr net-new</b> revenue, "
+    f"<b>{retn_pct:.0%} of it from retaining at-risk high-value traders, a bigger lever than card cross-sell</b>. "
+    f"Ranking by the model reaches <b style='color:#6E56CF'>~${prio/1e3:,.0f}k/yr</b> more of existing "
+    f"volume than a past-volume sort, at the same spend."
+    "</div>", unsafe_allow_html=True)
+
 # ---- Cohort row: label on the left, cards on the right ----
 c0, c1, c2, c3, c4 = st.columns([1.4, 1, 1, 1, 1], vertical_alignment="center")
 c0.markdown("<div style='font-size:1.1rem;line-height:1.2'>Cohort</div>", unsafe_allow_html=True)
@@ -116,14 +151,7 @@ c2.metric("Card/CASH targets", f"{view.recommended_action.str.startswith('Card')
 c3.metric("Meaningful holders (>$10)", f"{view.is_meaningful_holder.sum():,}")
 c4.metric("Likely to retain (P>=0.5)", f"{(view.retain_prob >= 0.5).sum():,}")
 
-# ---- Projected annual value row: label on the left, cards on the right ----
-_card = df[df.recommended_action.str.startswith("Card")]
-_wb = df[df.recommended_action.str.startswith("Win-back")]
-_cons = df[~df.is_whale]
-cv = vln.cash_value(_card.idle_stablecoin_usd.sum(), conv, float_rate=floatr)
-retn_saved = vln.annualize(vln.retention_value((_wb.predicted_value * vln.SWAP_FEE).sum(), save)["saved"])
-prio = vln.annualize(vln.prioritization_value((_cons.actual_future_volume * vln.SWAP_FEE).sum()))
-cash_new = cv["one_time_fee"] + cv["annual_float"]
+# ---- Projected annual value row: label on the left, cards on the right (figures computed above) ----
 v0, v1, v2, v3, v4 = st.columns([1.4, 1, 1, 1, 1], vertical_alignment="center")
 v0.markdown(f"<div style='font-size:1.1rem;line-height:1.2'>Projected annual value</div><span style='color:#6b7280;font-size:0.8rem;'>$/yr · full base ×{N}</span>", unsafe_allow_html=True)
 v1.metric("Net-new revenue /yr", f"${cash_new + retn_saved:,.0f}")

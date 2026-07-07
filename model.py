@@ -3,6 +3,10 @@
 priority = P(active) x E[value | active]; the value model trains on retained wallets only.
 Run:  python model.py
 """
+import json
+import os
+from datetime import datetime, timezone
+
 import duckdb
 import numpy as np
 import pandas as pd
@@ -149,6 +153,7 @@ scored_out = df[["wallet", "segment", "segment_name", "retain_prob", "predicted_
                  "idle_stablecoin_usd", "is_meaningful_holder", "is_whale", "total_volume_usd",
                  "total_swaps", "recency_days", "recommended_action"]]
 con.execute("CREATE OR REPLACE TABLE scored AS SELECT * FROM scored_out")
+n_features_total = con.execute("SELECT count(*) FROM features").fetchone()[0]
 con.close()
 
 # ---- diagnostics ----
@@ -192,4 +197,39 @@ for lo in (0, 10, 100, 1000):
 
 print("\nrecommended-action breakdown:")
 print(df["recommended_action"].value_counts().to_string())
+
+# ---- snapshot metadata: a committed contract so app/value read this run's actual window + metrics,
+# not live config (which can drift from the snapshot across a month boundary) or a hardcoded lift. ----
+ev_exw = ev[~ev.is_whale]
+def _lift(frac):
+    m = capture(ev_exw, "priority", frac) - capture(ev_exw, "past_volume", frac)
+    _, lo, hi = boot_lift(ev_exw, frac)
+    return round(float(m), 4), [round(float(lo), 4), round(float(hi), 4)]
+lift_dec, lift_dec_ci = _lift(0.10)
+lift_qui, lift_qui_ci = _lift(0.20)
+meta = {
+    "cutoff_t": config.CUTOFF_T,
+    "window_start": config.WINDOW_START[:10],
+    "window_end": config.WINDOW_END[:10],
+    "balance_day": config.BALANCE_DAY[:10],
+    "n_scored": int(len(scored_out)),
+    "n_features": int(n_features_total),
+    "auc": round(float(auc), 3),
+    "auc_cv_mean": round(float(cv_auc.mean()), 3),
+    "auc_cv_std": round(float(cv_auc.std()), 3),
+    "auc_ci": [round(float(_alo), 3), round(float(_ahi), 3)],
+    "lift_decile_exwhale": lift_dec,
+    "lift_decile_ci": lift_dec_ci,
+    "lift_quintile_exwhale": lift_qui,
+    "lift_quintile_ci": lift_qui_ci,
+    "value_r2_log": round(float(r2_log), 3),
+    "value_r2_usd": round(float(r2_usd), 3),
+    "silhouette_k": int(K),
+    "silhouette": round(float(sils[K]), 3),
+    "refreshed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+}
+os.makedirs("snapshot", exist_ok=True)
+with open("snapshot/metadata.json", "w") as f:
+    json.dump(meta, f, indent=2)
+print("wrote snapshot/metadata.json")
 print("\ndone -> `scored` table in", config.DB_PATH)

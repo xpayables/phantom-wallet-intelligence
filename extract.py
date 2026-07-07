@@ -65,6 +65,7 @@ def run_query(query_id, params):
     return pd.DataFrame(rows)
 
 
+os.makedirs(os.path.dirname(config.DB_PATH) or ".", exist_ok=True)   # data/ may not exist on a fresh runner
 con = duckdb.connect(config.DB_PATH)
 con.execute("""
 CREATE TABLE IF NOT EXISTS activity (

@@ -5,7 +5,7 @@ window is fully observed by run time; the feature window is the FEATURE_MONTHS b
 PIPELINE_ASOF=YYYY-MM-DD for a reproducible local rebuild.
 """
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 DUNE_API_KEY = os.environ.get("DUNE_API_KEY")   # .get() so non-extract scripts import without the key set
 DB_PATH = "data/phantom.duckdb"
@@ -35,4 +35,4 @@ _start = _add_months(_cutoff, -FEATURE_MONTHS)
 WINDOW_START = _start.strftime("%Y-%m-%d 00:00:00")
 WINDOW_END = _end.strftime("%Y-%m-%d 00:00:00")
 CUTOFF_T = _cutoff.strftime("%Y-%m-%d")          # date-only (UTC); features < T, labels >= T
-BALANCE_DAY = _cutoff.strftime("%Y-%m-%d 00:00:00")
+BALANCE_DAY = (_cutoff - timedelta(days=1)).strftime("%Y-%m-%d 00:00:00")  # T-1: last feature day, so the idle-balance feature can't leak label-window activity

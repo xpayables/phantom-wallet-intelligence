@@ -4,12 +4,20 @@ Reads `scored` + `features`, aggregates the target segments, and applies the eco
 valuation.py across conservative/base/upside assumptions. All figures scaled to the full base (x60)
 and PROJECTED (a holdout test is required to prove causal lift). Run:  python value.py
 """
+import json
 import os
 
 import duckdb
 
 import config
 import valuation as v
+
+# Targeting-efficiency lift = this run's measured value (snapshot metadata), not a hardcoded constant.
+try:
+    with open("snapshot/metadata.json") as f:
+        LIFT = json.load(f)["lift_decile_exwhale"]
+except (FileNotFoundError, KeyError):
+    LIFT = v.LIFT_TOP_DECILE
 
 if os.path.exists("snapshot/scored.parquet"):            # same source the app + README figures use
     df = duckdb.sql("""
@@ -48,9 +56,9 @@ print(f"  Win-back at-risk     : {len(winback) * n:>9,}")
 print(f"  Consumer base (ex-whale): {len(consumer) * n:>6,}\n")
 
 print(f"1) PRIORITIZATION -- target the top decile with the model vs. a past-volume sort")
-prio_q = v.prioritization_value(consumer_fee_sample)
+prio_q = v.prioritization_value(consumer_fee_sample, lift=LIFT)
 print(f"   consumer fee revenue / quarter: {money(consumer_fee_sample * n)}  (annualized {money(v.annualize(consumer_fee_sample * n))})")
-print(f"   extra reachable at top 10% (lift {v.LIFT_TOP_DECILE:.0%}): {money(prio_q)}/qtr = {money(v.annualize(prio_q))}/yr\n")
+print(f"   extra reachable at top 10% (lift {LIFT:.0%}): {money(prio_q)}/qtr = {money(v.annualize(prio_q))}/yr\n")
 
 print(f"2) CASH CROSS-SELL -- convert idle balances to CASH ({v.SWAP_FEE:.2%} fee once + {v.FLOAT_RATE_YR:.2%}/yr float)")
 print(f"   {'conversion':<14}{'converted':>14}{'one-time fee':>15}{'float /yr':>13}")
@@ -71,7 +79,7 @@ cv_b = v.cash_value(idle_sample, v.CONVERSION["base"])
 rv_b = v.retention_value(at_risk_fee_sample, v.SAVE_RATE["base"])
 cash_new = cv_b["one_time_fee"] + cv_b["annual_float"]
 retn_new = v.annualize(rv_b["saved"])
-print(f"\nBASE-CASE (conversion {v.CONVERSION['base']:.0%}, save-rate {v.SAVE_RATE['base']:.0%}, float {v.FLOAT_RATE_YR:.2%}/yr, fee {v.SWAP_FEE:.2%}, lift {v.LIFT_TOP_DECILE:.0%}):")
+print(f"\nBASE-CASE (conversion {v.CONVERSION['base']:.0%}, save-rate {v.SAVE_RATE['base']:.0%}, float {v.FLOAT_RATE_YR:.2%}/yr, fee {v.SWAP_FEE:.2%}, lift {LIFT:.0%}):")
 print(f"  NET-NEW revenue/yr  = CASH {money(cash_new)} + retention saved {money(retn_new)} = {money(cash_new + retn_new)}")
 print(f"  TARGETING EFFICIENCY = {money(v.annualize(prio_q))}/yr of existing value reachable in the top 10% vs a")
 print(f"                         volume-sort (a multiplier on campaign spend, NOT additive net-new revenue)")

@@ -131,13 +131,13 @@ Windows roll forward monthly, with `T` anchored to the first of the month (so fe
 - `config.py`: window, cutoff `T`, query ids, sample settings.
 - `extract.py`: chunked Dune API → DuckDB (`activity`, `balances_at_t`); credit-safe + resumable.
 - `features.py`: per-wallet features + churn/value labels (+ DQ assertions) → `features`.
-- `model.py`: two-stage churn + value models, honest eval (baseline lift, bootstrap CIs, calibration, importances), segments → `scored`.
+- `model.py`: two-stage churn + value models, honest eval (baseline lift, bootstrap CIs, calibration, importances), segments → `scored` + `snapshot/metadata.json` (the run's window + metrics).
 - `valuation.py` / `value.py`: economic assumptions + projected-value report.
 - `export_demo.py`: copies `scored`+`features` into `snapshot/*.parquet` for deploy (version-independent).
 - `app.py`: Streamlit dashboard.
 - `.github/workflows/refresh.yml`: monthly cron that rebuilds and commits the snapshot (auto-redeploys the app).
 - `sql/`: Dune queries (`transfers_chunk.sql`, `balances_at_t.sql`).
-- `data/`: full pipeline DB (gitignored). `snapshot/`: committed Parquet the app reads.
+- `data/`: full pipeline DB (gitignored). `snapshot/`: committed Parquet + `metadata.json` (window/metrics) the app reads.
 
 ## Sources
 - Card economics (interchange ~100-130 bps; CASH float ~3.5%/yr net). CASH issued via [Bridge Open Issuance (Stripe)](https://stripe.com/blog/introducing-open-issuance-from-bridge); net float ≈ 3-mo T-bill yield (~3.7%, Jul 2026) less Bridge's issuance fee.
