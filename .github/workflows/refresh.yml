@@ -1,7 +1,6 @@
 name: Monthly data refresh
 
-# Rolls the window forward, rebuilds the snapshot from Dune, and commits it back (which redeploys the
-# Streamlit app). Run the first one manually via "Run workflow" to validate and measure Dune credits.
+# Rolls the window forward, rebuilds the snapshot from Dune, and commits it back
 on:
   schedule:
     - cron: "0 6 1 * *"        # 06:00 UTC on the 1st of each month
