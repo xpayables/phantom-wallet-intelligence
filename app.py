@@ -57,6 +57,8 @@ st.markdown("""
   /* unify the small meta labels (Cutoff T, 1/60 sample, etc.) to one size + color */
   [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p {
       font-size:0.8rem !important; color:#6b7280 !important; }
+  /* compact sidebar so filters + assumptions fit without scrolling */
+  section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap:0.55rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -110,16 +112,16 @@ seg_mask = df.segment_name.isin(segs) if segs else pd.Series(True, index=df.inde
 act_mask = df.recommended_action.isin(acts) if acts else pd.Series(True, index=df.index)
 view = df[seg_mask & act_mask & (df.idle_stablecoin_usd >= min_bal)]
 
-with st.sidebar.expander("Value assumptions (projected)", expanded=False):
-    st.caption("What the projection assumes", help="Two campaign rates (conversion, win-back save-rate) plus the "
-               "CASH yield. Set them to your targets and the revenue above is what those rates are worth; changing "
-               "them moves the dollars only, not the recommended wallets.")
-    conv = st.slider("CASH conversion rate", 0, 15, 4, 1, format="%d%%",
-                     help="Share of card/CASH candidates who convert idle USDC to CASH.") / 100
-    save = st.slider("Win-back save-rate", 0, 30, 15, 1, format="%d%%",
-                     help="Share of at-risk wallets a win-back campaign successfully re-engages.") / 100
-    floatr = st.slider("CASH float rate /yr", 0.0, 5.0, 3.25, 0.25, format="%.2f%%",
-                       help="Annual yield Phantom nets on idle CASH (T-bill yield minus Bridge/Stripe fee).") / 100
+st.sidebar.subheader("Value assumptions (projected)")
+st.sidebar.caption("What the projection assumes", help="Two campaign rates (conversion, win-back save-rate) plus the "
+    "CASH yield. Set them to your targets and the revenue above is what those rates are worth. They "
+    "change the projected revenue only, not who the model recommends targeting.")
+conv = st.sidebar.slider("CASH conversion rate", 0, 15, 4, 1, format="%d%%",
+                         help="Share of card/CASH candidates who convert idle USDC to CASH.") / 100
+save = st.sidebar.slider("Win-back save-rate", 0, 30, 15, 1, format="%d%%",
+                         help="Share of at-risk wallets a win-back campaign successfully re-engages.") / 100
+floatr = st.sidebar.slider("CASH float rate /yr", 0.0, 5.0, 3.25, 0.25, format="%.2f%%",
+                           help="Annual yield Phantom nets on idle CASH (T-bill yield minus Bridge/Stripe fee).") / 100
 
 # ---- projected-value figures (computed up front; drive the exec banner + the value row below) ----
 _card = df[df.recommended_action.str.startswith("Card")]
