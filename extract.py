@@ -102,6 +102,7 @@ while d < end:
     df = run_query(config.TRANSFERS_QUERY_ID, {
         "start_date": d.strftime("%Y-%m-%d %H:%M:%S"),
         "end_date": chunk_end.strftime("%Y-%m-%d %H:%M:%S"),
+        "fee_wallets": ",".join(config.FEE_WALLETS),   # roster passed as a param, not hardcoded in SQL
     })
     if len(df):
         # Parse as UTC so the day is independent of the host timezone.

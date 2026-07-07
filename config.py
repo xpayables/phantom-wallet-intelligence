@@ -14,6 +14,19 @@ DB_PATH = "data/phantom.duckdb"
 TRANSFERS_QUERY_ID = 7887859
 BALANCES_QUERY_ID = 7887855
 
+# Phantom's Solana swap-fee wallets (DefiLlama fees/phantom.ts). Passed to the transfers query as a
+# parameter (not hardcoded in SQL), so the roster lives here in one place.
+FEE_WALLETS = [
+    "25mYnjJ2MXHZH6NvTTdA63JvjgRVcuiaj6MRiEQNs1Dq",
+    "9yj3zvLS3fDMqi1F8zhkaWfq8TZpZWHe6cz1Sgt7djXf",
+    "8psNvWTrdNTiVRNzAgsou9kETXNJm2SXZyaKuJraVRtf",
+    "CnmA6Zb8hLrG33AT4RTzKdGv1vKwRBKQQr8iNckvv8Yg",
+    "2rQZb9xqQGwoCMDkpabbzDB9wyPTjSPj9WNhJodTaRHm",
+    "9gnLg6NtVxaASvxtADLFKZ9s8yHft1jXb1Vu6gVKvh1J",
+    "wtpXRqKLdGc7vpReogsRugv6EFCw4HBHcxm8pFcR84a",
+    "D1NJy3Qq3RKBG29EDRj28ozbGwnhmM5yBUp8PonSYUnm",
+]
+
 CHUNK_DAYS = 3            # extraction chunk width (keeps each Small-engine query under the ~2-min limit)
 PULL_BALANCES = True      # gate the one-day balance snapshot
 FEATURE_MONTHS = 6        # feature-window length

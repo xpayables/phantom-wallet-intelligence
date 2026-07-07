@@ -1,22 +1,13 @@
 -- Per-wallet-per-day Phantom fee activity for a date chunk.
--- Save this in Dune with {{start_date}} and {{end_date}} as Text parameters.
--- Roster = wallets that paid a fee to one of Phantom's 8 Solana fee wallets;
--- from_owner is the paying user (validated ~28.8k distinct/day).
+-- Save in Dune with {{start_date}}, {{end_date}}, and {{fee_wallets}} as Text parameters.
+-- {{fee_wallets}} is a comma-separated list of Phantom's Solana fee wallets (DefiLlama fees/phantom.ts),
+-- passed from config.FEE_WALLETS so the roster isn't hardcoded here. from_owner is the paying user.
 SELECT from_owner                    AS wallet,
        date_trunc('day', block_time) AS activity_day,
        count(*)                      AS fee_swaps,   -- activity (complete)
        sum(amount_usd)               AS fee_usd      -- ~90% priced; volume ~ fee_usd / 0.0085
 FROM tokens_solana.transfers
-WHERE to_owner IN (
-  '25mYnjJ2MXHZH6NvTTdA63JvjgRVcuiaj6MRiEQNs1Dq',
-  '9yj3zvLS3fDMqi1F8zhkaWfq8TZpZWHe6cz1Sgt7djXf',
-  '8psNvWTrdNTiVRNzAgsou9kETXNJm2SXZyaKuJraVRtf',
-  'CnmA6Zb8hLrG33AT4RTzKdGv1vKwRBKQQr8iNckvv8Yg',
-  '2rQZb9xqQGwoCMDkpabbzDB9wyPTjSPj9WNhJodTaRHm',
-  '9gnLg6NtVxaASvxtADLFKZ9s8yHft1jXb1Vu6gVKvh1J',
-  'wtpXRqKLdGc7vpReogsRugv6EFCw4HBHcxm8pFcR84a',
-  'D1NJy3Qq3RKBG29EDRj28ozbGwnhmM5yBUp8PonSYUnm'
-)
+WHERE contains(split('{{fee_wallets}}', ','), to_owner)                  -- fee wallets from the param, not hardcoded
   AND abs(from_big_endian_64(xxhash64(to_utf8(from_owner)))) % 60 = 0   -- ~1/60 uniform random sample (hash of wallet; tune the 60)
   AND block_time >= TIMESTAMP '{{start_date}}'
   AND block_time <  TIMESTAMP '{{end_date}}'
