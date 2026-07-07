@@ -135,7 +135,7 @@ st.markdown(
     "font-size:1.02rem;line-height:1.5;'>"
     f"💡 <b>Focus, don't blanket.</b> Model-targeting the existing base projects "
     f"<b style='color:#6E56CF'>~${net_new/1e3:,.0f}k/yr net-new</b> revenue, "
-    f"<b>{retn_pct:.0%} of it from retaining at-risk high-value traders, a bigger lever than card cross-sell</b>. "
+    f"{retn_pct:.0%} of it from retaining at-risk high-value traders, a bigger lever than card cross-sell. "
     f"Ranking by the model reaches <b style='color:#6E56CF'>~${prio/1e3:,.0f}k/yr</b> more of existing "
     f"volume than a past-volume sort, at the same spend."
     "</div>", unsafe_allow_html=True)
