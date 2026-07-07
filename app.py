@@ -138,7 +138,7 @@ st.markdown(
     "font-size:1.02rem;line-height:1.5;'>"
     f"💡 <b>Focus, don't blanket.</b> The model targets <b>who's about to churn</b> and "
     f"<b>who fits CASH</b> (signals a past-volume sort can't see), projecting "
-    f"<b style='color:#6E56CF'>~${net_new/1e3:,.0f}k/yr net-new</b>, "
+    f"<b style='color:#6E56CF'>~${net_new/1e3:,.0f}k/yr incremental revenue</b>, "
     f"{retn_pct:.0%} from winning back at-risk high-value traders."
     "</div>", unsafe_allow_html=True)
 
@@ -156,11 +156,11 @@ c4.metric("Likely to retain (P>=0.5)", f"{(view.retain_prob >= 0.5).sum():,}")
 # ---- Projected annual value row: label on the left, cards on the right (figures computed above) ----
 v0, v1, v2, v3, v4 = st.columns([1.4, 1, 1, 1, 1], vertical_alignment="center")
 v0.markdown(f"<div style='font-size:1.1rem;line-height:1.2'>Projected annual value</div><span style='color:#6b7280;font-size:0.8rem;'>$/yr · full base ×{N}</span>", unsafe_allow_html=True)
-v1.metric("Net-new revenue /yr", f"${cash_new + retn_saved:,.0f}")
+v1.metric("Incremental revenue /yr", f"${cash_new + retn_saved:,.0f}")
 v2.metric("CASH (fee + float)", f"${cash_new:,.0f}")
 v3.metric("Retention saved", f"${retn_saved:,.0f}")
 v4.metric("Targeting efficiency /yr", f"${prio:,.0f}",
-          help="Value reached in the top decile vs. a plain past-volume sort. A multiplier on campaign spend, not additive net-new. Projected under the sidebar assumptions.")
+          help="Value reached in the top decile vs. a plain past-volume sort. A multiplier on campaign spend, not incremental revenue. Projected under the sidebar assumptions.")
 
 # ---- Value concentration + Recommended actions, side by side ----
 left, right = st.columns(2)

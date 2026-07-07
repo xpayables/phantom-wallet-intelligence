@@ -6,7 +6,7 @@ Rank a crypto wallet's existing users for **card/CASH cross-sell and retention**
 
 [![Phantom Wallet Intelligence dashboard](assets/dashboard.png)](https://phantom-wallet-intelligence.streamlit.app)
 
-*Figures and windows are from the current monthly snapshot (cutoff `T` = 2026-04-01); the live dashboard recomputes them on each refresh. The embedded screenshot is illustrative, from an earlier run.*
+*Figures and windows are from the current monthly snapshot (cutoff `T` = 2026-04-01); the live dashboard recomputes them on each refresh.*
 
 **Takeaway:** a **retention** model and a **value** model combine into a priority score that beats a naive past-volume sort on the consumer base (**significant at the top quintile**; the top-decile lift is larger but window-dependent), projecting to a tunable **~$0.3M/yr** case. Each model carries its own metric: retention AUC 0.80, priority-score lift, value R², segmentation silhouette. Full results below, *after* the methodology.
 
@@ -91,9 +91,9 @@ For each wallet the models produce three numbers: **retention probability**, **p
 - **Handle 1:1**: high-volume outliers → **33 → ~2,000 (0.1%)**. 
 	- Institutional / account-management, not a mass campaign.
 - **Monitor**: everyone else → **~1.52M (77%)**. No spend.
-- **Prioritization** (cross-cutting): targeting the top decile by priority score reaches **≈ $0.6M/yr** more of next-quarter volume than a past-volume sort, a campaign-efficiency gain, not additive net-new.
+- **Prioritization** (cross-cutting): targeting the top decile by priority score reaches **≈ $0.6M/yr** more of next-quarter volume than a past-volume sort, a campaign-efficiency gain, not incremental revenue.
 
-**Base-case net-new ≈ $0.3M/yr** (CASH + retention saved), plus the ~$0.6M efficiency. Assumptions: conversion 4%, save-rate 15%, net float 3.25%, fee 0.85%, lift 7%. Exact figures print from `value.py`.
+**Base-case incremental revenue ≈ $0.3M/yr** (CASH + retention saved), plus the ~$0.6M efficiency. Assumptions: conversion 4%, save-rate 15%, net float 3.25%, fee 0.85%, lift 7%. Exact figures print from `value.py`.
 
 Conversion, save-rate, and float can't be read from on-chain data, so the dashboard exposes them as **sliders**: a PM enters their own estimates and the projection re-runs (a what-if / sensitivity check). The sliders move the *dollar figures* only; the recommended wallets are fixed by the models.
 

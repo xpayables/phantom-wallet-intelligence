@@ -74,14 +74,14 @@ for name, sr in v.SAVE_RATE.items():
     tag = " (base)" if name == "base" else ""
     print(f"   save-rate {name + tag:<10} ({sr:.0%}): {money(v.annualize(rv['saved']))}/yr saved")
 
-# base-case summary -- keep NET-NEW revenue separate from targeting EFFICIENCY (not additive)
+# base-case summary -- keep INCREMENTAL revenue separate from targeting EFFICIENCY (not additive)
 cv_b = v.cash_value(idle_sample, v.CONVERSION["base"])
 rv_b = v.retention_value(at_risk_fee_sample, v.SAVE_RATE["base"])
 cash_new = cv_b["one_time_fee"] + cv_b["annual_float"]
 retn_new = v.annualize(rv_b["saved"])
 print(f"\nBASE-CASE (conversion {v.CONVERSION['base']:.0%}, save-rate {v.SAVE_RATE['base']:.0%}, float {v.FLOAT_RATE_YR:.2%}/yr, fee {v.SWAP_FEE:.2%}, lift {LIFT:.0%}):")
-print(f"  NET-NEW revenue/yr  = CASH {money(cash_new)} + retention saved {money(retn_new)} = {money(cash_new + retn_new)}")
+print(f"  INCREMENTAL revenue/yr = CASH {money(cash_new)} + retention saved {money(retn_new)} = {money(cash_new + retn_new)}")
 print(f"  TARGETING EFFICIENCY = {money(v.annualize(prio_q))}/yr of existing value reachable in the top 10% vs a")
-print(f"                         volume-sort (a multiplier on campaign spend, NOT additive net-new revenue)")
+print(f"                         volume-sort (a multiplier on campaign spend, NOT incremental revenue)")
 print(f"  NOTE: CASH is a CONSERVATIVE FLOOR (idle stablecoin only; portfolio-wide addressable is larger -- v2).")
 print("  All assumptions tunable; PROJECTED -- causal lift requires a treatment/holdout test.")
