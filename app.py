@@ -111,8 +111,9 @@ act_mask = df.recommended_action.isin(acts) if acts else pd.Series(True, index=d
 view = df[seg_mask & act_mask & (df.idle_stablecoin_usd >= min_bal)]
 
 with st.sidebar.expander("Value assumptions (projected)", expanded=False):
-    st.caption("About these inputs", help="Three inputs on-chain data can't measure. Adjust them to re-run the "
-               "projection; the dollar figures change, the recommended wallets don't.")
+    st.caption("What the projection assumes", help="Two campaign rates (conversion, win-back save-rate) plus the "
+               "CASH yield. Set them to your targets and the revenue above is what those rates are worth; changing "
+               "them moves the dollars only, not the recommended wallets.")
     conv = st.slider("CASH conversion rate", 0, 15, 4, 1, format="%d%%",
                      help="Share of card/CASH candidates who convert idle USDC to CASH.") / 100
     save = st.slider("Win-back save-rate", 0, 30, 15, 1, format="%d%%",
