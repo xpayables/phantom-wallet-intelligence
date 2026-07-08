@@ -27,20 +27,42 @@ jobs:
           APP_URL: https://phantom-wallet-intelligence.streamlit.app
         run: |
           python - <<'PY'
-          import os
-          from playwright.sync_api import sync_playwright
+          import os, re
+          from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
           url = os.environ["APP_URL"]
           with sync_playwright() as p:
               browser = p.chromium.launch()
               page = browser.new_page()
-              page.goto(url, timeout=120_000)
-              wake = page.get_by_role("button", name="Yes, get this app back up!")
-              if wake.count() > 0:                      # app was asleep -> wake it
+              page.goto(url, timeout=120_000, wait_until="domcontentloaded")
+
+              # If asleep, Community Cloud shows a wake button. count() is a non-waiting
+              # snapshot -- the button usually isn't rendered yet at that instant, so wait
+              # for it instead. Label has varied across Streamlit versions -> match loosely.
+              wake = page.get_by_role("button", name=re.compile("get this app back up|wake", re.I))
+              try:
+                  wake.wait_for(state="visible", timeout=30_000)
                   print("app was asleep; clicking wake")
                   wake.click()
-                  page.wait_for_timeout(60_000)
-              page.wait_for_selector("text=Cohort", timeout=120_000)   # proves the backend rendered
-              print("app is awake:", page.title())
-              browser.close()
+              except PWTimeout:
+                  print("no wake button; app was already awake")
+
+              # Confirm the backend rendered the dashboard (cold boot after wake can be slow).
+              try:
+                  page.wait_for_selector("text=Cohort", timeout=240_000)
+                  print("app is awake:", page.title())
+              except PWTimeout:
+                  page.screenshot(path="keepalive-debug.png", full_page=True)
+                  print("RENDER FAILED -- title:", page.title())
+                  print(page.inner_text("body")[:1500])
+                  raise
+              finally:
+                  browser.close()
           PY
+      - name: Upload debug screenshot on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keepalive-debug
+          path: keepalive-debug.png
+          if-no-files-found: ignore
