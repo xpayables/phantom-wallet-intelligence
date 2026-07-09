@@ -27,7 +27,7 @@ jobs:
           APP_URL: https://phantom-wallet-intelligence.streamlit.app
         run: |
           python - <<'PY'
-          import os, re
+          import os, re, time
           from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
           url = os.environ["APP_URL"]
@@ -36,9 +36,8 @@ jobs:
               page = browser.new_page()
               page.goto(url, timeout=120_000, wait_until="domcontentloaded")
 
-              # If asleep, Community Cloud shows a wake button. count() is a non-waiting
-              # snapshot -- the button usually isn't rendered yet at that instant, so wait
-              # for it instead. Label has varied across Streamlit versions -> match loosely.
+              # If asleep, the viewer chrome (top frame) shows a wake button. count() is a
+              # non-waiting snapshot, so wait for it. Label varies by version -> match loosely.
               wake = page.get_by_role("button", name=re.compile("get this app back up|wake", re.I))
               try:
                   wake.wait_for(state="visible", timeout=30_000)
@@ -47,17 +46,30 @@ jobs:
               except PWTimeout:
                   print("no wake button; app was already awake")
 
-              # Confirm the backend rendered the dashboard (cold boot after wake can be slow).
-              try:
-                  page.wait_for_selector("text=Cohort", timeout=240_000)
-                  print("app is awake:", page.title())
-              except PWTimeout:
+              # Community Cloud renders the app INSIDE an iframe -- the top frame is just chrome.
+              # Poll every frame for the dashboard content (works iframed or not; cold boot is slow).
+              found = False
+              deadline = time.monotonic() + 240
+              while time.monotonic() < deadline:
+                  for fr in page.frames:
+                      try:
+                          if fr.get_by_text("Cohort").count() > 0:
+                              found = True
+                              break
+                      except Exception:
+                          pass                      # frame mid-navigation; retry next pass
+                  if found:
+                      break
+                  page.wait_for_timeout(3_000)
+
+              if not found:
                   page.screenshot(path="keepalive-debug.png", full_page=True)
-                  print("RENDER FAILED -- title:", page.title())
-                  print(page.inner_text("body")[:1500])
-                  raise
-              finally:
+                  print("RENDER FAILED -- frame urls:", [f.url for f in page.frames])
                   browser.close()
+                  raise SystemExit("Cohort not found in any frame within timeout")
+
+              print("app is awake:", page.title(), "-- frames:", len(page.frames))
+              browser.close()
           PY
       - name: Upload debug screenshot on failure
         if: failure()
