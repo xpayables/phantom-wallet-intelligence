@@ -1,0 +1,30 @@
+{
+  "cutoff_t": "2026-05-01",
+  "window_start": "2025-11-01",
+  "window_end": "2026-08-01",
+  "balance_day": "2026-04-30",
+  "n_scored": 29303,
+  "n_features": 29365,
+  "auc": 0.799,
+  "auc_cv_mean": 0.789,
+  "auc_cv_std": 0.006,
+  "auc_ci": [
+    0.784,
+    0.813
+  ],
+  "lift_decile_exwhale": 0.065,
+  "lift_decile_ci": [
+    -0.0566,
+    0.1731
+  ],
+  "lift_quintile_exwhale": 0.002,
+  "lift_quintile_ci": [
+    -0.0971,
+    0.0841
+  ],
+  "value_r2_log": 0.256,
+  "value_r2_usd": -0.454,
+  "silhouette_k": 4,
+  "silhouette": 0.37,
+  "refreshed_at": "2026-08-01T08:54:31+00:00"
+}
